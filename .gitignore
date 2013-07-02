@@ -2,3 +2,5 @@
 .env
 .DS_Store
 .*.sw[po]
+dist/
+tmp/

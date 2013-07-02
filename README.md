@@ -4,14 +4,23 @@ Elastic NGINX
 This is a simple app for registering and unregistering instances that goes live or dead by the Auto Scaling definitions.
 
 
+Building
+--------
+
+To build the project you'll need the Go compiler. You can find instructions on how to setup your Go environment [here](http://golang.org/doc/install).
+
+With your Go environment setup, run the Makefile (e.g. `make`). The binary will be located at `dist/elastic-nginx`
+
+
 Installing
 ----------
 
-To install this project is really easy.
+Just upload the binary to your server. =)
 
-- Clone the repo somewhere
 
-- Install the requirements (you can do this globally, but I rightly recommend using an virtualenv)
-  `pip install -r requirements.txt`
+Running
+-------
 
-- Configure and setup the app container. I recommend using Gunicorn and there is an example of a Upstart script for gunicorn in [/etc/init/gunicorn.conf](/etc/init/gunicorn.conf).
+You'll need AWS credentials with EC2 reading permissions.
+
+Export the AWS credentials as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as environment variables. Other options can be listed with the `-h` or `--help` flags.
