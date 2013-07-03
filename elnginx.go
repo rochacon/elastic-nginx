@@ -158,6 +158,9 @@ func main() {
 
 	log.Println("Listening on :5000")
 	log.Println("Monitoring events on:", TopicArn)
+	log.Println("Upstream:", UpstreamName)
+	log.Println("  File:", UpstreamFile)
+	log.Println("  Path:", UpstreamsPath)
 	err := http.ListenAndServe(":5000", nil)
 	if err != nil {
 		log.Fatal(err)
