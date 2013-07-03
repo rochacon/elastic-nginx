@@ -5,11 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"io/ioutil"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
-	"io/ioutil"
+	"path/filepath"
 	"net/http"
 	"os"
+	"os/exec"
 )
 
 var AWSRegion = ""
@@ -30,7 +32,7 @@ type JSONResponse struct {
 }
 
 func getUpstreamFilenameForInstance(i *ec2.Instance) string {
-	return UpstreamsPath + "/" + i.InstanceId + ".upstream"
+	return filepath.Join(UpstreamsPath, i.InstanceId + ".upstream")
 }
 
 func addInstance(i *ec2.Instance) error {
@@ -81,6 +83,36 @@ func getInstance(id string) (ec2.Instance, error) {
 	return ec2.Instance{}, fmt.Errorf("WTFBBQ?!")
 }
 
+func reconfigure() error {
+	upstream, err := os.Create(UpstreamFile)
+	if err != nil {
+		return err
+	}
+	defer upstream.Close()
+
+	upstream.WriteString(fmt.Sprintf("upstream %s {\n", UpstreamName))
+
+	upstream_filenames, err := filepath.Glob(filepath.Join(UpstreamsPath, "*.upstream"))
+	if err != nil {
+		return err
+	}
+
+	for _, upstream_filename := range upstream_filenames {
+		content, err := ioutil.ReadFile(upstream_filename)
+		if err != nil {
+			return err
+		}
+		upstream.WriteString(fmt.Sprintf("  %s", string(content)))
+	}
+
+	upstream.WriteString("}\n")
+	return nil
+}
+
+func reload() ([]byte, error) {
+	return exec.Command("sudo", "service", "nginx", "reload").CombinedOutput()
+}
+
 func readMessage(w http.ResponseWriter, r *http.Request) {
 	input, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
@@ -111,6 +143,7 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response_content := ""
 	switch message.Event {
 		case "autoscaling:EC2_INSTANCE_LAUNCH":
 			err := addInstance(&instance)
@@ -118,7 +151,7 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			fmt.Fprintf(w, `Added instance "%s".`, instance.InstanceId)
+			response_content = fmt.Sprintf(`Added instance "%s".`, instance.InstanceId)
 
 		case "autoscaling:EC2_INSTANCE_TERMINATE":
 			err := rmInstance(&instance)
@@ -126,8 +159,20 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-			fmt.Fprintf(w, `Removed instance "%s".`, instance.InstanceId)
+			response_content = fmt.Sprintf(`Removed instance "%s".`, instance.InstanceId)
 	}
+
+	if err := reconfigure(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := reload(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, response_content)
 }
 
 func main() {
