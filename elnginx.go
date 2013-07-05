@@ -172,6 +172,7 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println(response_content)
 	fmt.Fprintf(w, response_content)
 }
 
