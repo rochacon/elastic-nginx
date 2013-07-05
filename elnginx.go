@@ -117,6 +117,8 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 	input, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 
+	log.Println(fmt.Sprintf("Received Payload: %s", input))
+
 	response := JSONResponse{}
 	if err := json.Unmarshal(input, &response); err != nil {
 		http.Error(w, "Invalid JSON.", http.StatusBadRequest)
