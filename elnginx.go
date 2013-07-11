@@ -162,6 +162,10 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			response_content = fmt.Sprintf(`Removed instance "%s".`, instance.InstanceId)
+
+		default:
+			http.Error(w, "Invalid Event.", http.StatusBadRequest)
+			return
 	}
 
 	if err := reconfigure(); err != nil {
