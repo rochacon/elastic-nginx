@@ -37,7 +37,7 @@ Configuration options can be listed with the `-h` or `--help` flags.
 Testing
 -------
 
-To run test you'll need a couple more dependencies:
+To run the test suite you'll need a couple more dependencies:
 
 ```
 go get github.com/globocom/commandmocker
