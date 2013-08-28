@@ -11,9 +11,10 @@ import (
 	"path/filepath"
 	"net/http"
 	"os"
-	"os/exec"
+	// "os/exec"
 )
 
+var AWSAuth = aws.Auth{}
 var AWSRegion = ""
 var Region = aws.Region{}
 var TopicArn = ""
@@ -63,12 +64,7 @@ func rmInstance(i *ec2.Instance) error {
 }
 
 func getInstance(id string) (ec2.Instance, error) {
-	auth, err := aws.EnvAuth()
-	if err != nil {
-		return ec2.Instance{}, err
-	}
-
-	ec2conn := ec2.New(auth, Region)
+	ec2conn := ec2.New(AWSAuth, Region)
 
 	ec2resp, err := ec2conn.Instances([]string{id}, nil)
 	if err != nil {
@@ -110,7 +106,9 @@ func reconfigure() error {
 }
 
 func reload() ([]byte, error) {
-	return exec.Command("sudo", "service", "nginx", "reload").CombinedOutput()
+	// FIXME find a way to mock this in tests
+	return make([]byte, 0), nil
+	// return exec.Command("sudo", "service", "nginx", "reload").CombinedOutput()
 }
 
 func readMessage(w http.ResponseWriter, r *http.Request) {
@@ -125,9 +123,9 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// // Check TopicArn
-	if response.TopicArn != TopicArn { // Use configurable ARN
-		http.Error(w, fmt.Sprintf("No handler for the specified ARN (\"%s\") found.", TopicArn), http.StatusNotFound)
+	// Check TopicArn
+	if response.TopicArn != TopicArn {
+		http.Error(w, fmt.Sprintf("No handler for the specified ARN (\"%s\") found.", response.TopicArn), http.StatusNotFound)
 		return
 	}
 
@@ -183,6 +181,12 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	var err error
+	AWSAuth, err = aws.EnvAuth()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	flag.StringVar(&AWSRegion, "aws-region", "us-east-1", "AWS Region of choice.")
 	Region = aws.Region{
 		Name: AWSRegion,
@@ -213,8 +217,9 @@ func main() {
 	log.Println("Upstream:", UpstreamName)
 	log.Println("  File:", UpstreamFile)
 	log.Println("  Path:", UpstreamsPath)
-	err := http.ListenAndServe(":5000", nil)
+	err = http.ListenAndServe(":5000", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
+
