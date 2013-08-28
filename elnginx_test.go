@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -185,4 +186,9 @@ func (s *S) TestGetInstance(c *gocheck.C) {
 	i, err := getInstance(s.instance_ids[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(i.InstanceId, gocheck.Equals, s.instance_ids[0])
+}
+
+func (s *S) TestGetUpstreamFilenameForInstance(c *gocheck.C) {
+	path := getUpstreamFilenameForInstance(&ec2.Instance{InstanceId: "i-00000"})
+	c.Assert(path, gocheck.Equals, filepath.Join(UpstreamsPath, "i-00000.upstream"))
 }
