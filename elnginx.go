@@ -179,12 +179,6 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	var err error
-	AWSAuth, err = aws.EnvAuth()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	flag.StringVar(&AWSRegion, "aws-region", "us-east-1", "AWS Region of choice.")
 	Region = aws.Region{
 		Name:        AWSRegion,
@@ -203,6 +197,12 @@ func main() {
 		"Folder where will be generated servers confs.")
 
 	flag.Parse()
+
+	var err error
+	AWSAuth, err = aws.EnvAuth()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if TopicArn == "" {
 		log.Fatal("No Topic ARN found.")
