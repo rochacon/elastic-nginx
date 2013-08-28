@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/globocom/commandmocker"
 	"io"
 	"io/ioutil"
 	"launchpad.net/goamz/aws"
@@ -81,6 +82,10 @@ func readBody(b io.Reader, c *gocheck.C) string {
 }
 
 func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
+	cmd, err := commandmocker.Add("sudo", "service nginx reload")
+	c.Check(err, gocheck.IsNil)
+	defer commandmocker.Remove(cmd)
+
 	b := strings.NewReader(fmt.Sprintf(`{"TopicArn":"arn:test","Message":"{\"Event\":\"autoscaling:EC2_INSTANCE_LAUNCH\",\"EC2InstanceId\":\"%s\"}"}`, s.instance_ids[0]))
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
@@ -93,6 +98,9 @@ func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	serverLine := "server :80 max_fails=3 fail_timeout=60s;\n" // ec2test.Instance does not have a PrivateDNSName :'(
 	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n  %s}\n", UpstreamName, serverLine))
+
+	// Check run NGINX reload
+	c.Assert(commandmocker.Ran(cmd), gocheck.Equals, true)
 }
 
 func (s *S) TestAddInstance(c *gocheck.C) {
@@ -106,6 +114,10 @@ func (s *S) TestAddInstance(c *gocheck.C) {
 }
 
 func (s *S) TestReadMessageWithTerminateJSON(c *gocheck.C) {
+	cmd, err := commandmocker.Add("sudo", "service nginx reload")
+	c.Check(err, gocheck.IsNil)
+	defer commandmocker.Remove(cmd)
+
 	// Setup instance file
 	instance := &ec2.Instance{InstanceId: s.instance_ids[0], PrivateDNSName: "test.internal"}
 	if err := addInstance(instance); err != nil {
@@ -124,7 +136,8 @@ func (s *S) TestReadMessageWithTerminateJSON(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n}\n", UpstreamName))
 
-	// TODO test logging ??
+	// Check run NGINX reload
+	c.Assert(commandmocker.Ran(cmd), gocheck.Equals, true)
 }
 
 func (s *S) TestRemoveInstance(c *gocheck.C) {

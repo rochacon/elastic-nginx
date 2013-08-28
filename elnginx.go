@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	// "os/exec"
+	"os/exec"
 )
 
 var AWSAuth = aws.Auth{}
@@ -106,9 +106,7 @@ func reconfigure() error {
 }
 
 func reload() ([]byte, error) {
-	// FIXME find a way to mock this in tests
-	return make([]byte, 0), nil
-	// return exec.Command("sudo", "service", "nginx", "reload").CombinedOutput()
+	return exec.Command("sudo", "service", "nginx", "reload").CombinedOutput()
 }
 
 func readMessage(w http.ResponseWriter, r *http.Request) {
