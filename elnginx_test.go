@@ -23,11 +23,11 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	ec2 *ec2.EC2
-	logOutput *bytes.Buffer
+	ec2          *ec2.EC2
+	logOutput    *bytes.Buffer
 	instance_ids []string
-	testPath string
-	testServer *ec2test.Server
+	testPath     string
+	testServer   *ec2test.Server
 }
 
 var _ = gocheck.Suite(&S{})
@@ -91,7 +91,7 @@ func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
 	// Check upstreams file
 	content, err := ioutil.ReadFile(UpstreamFile)
 	c.Assert(err, gocheck.IsNil)
-	serverLine := "server :80 max_fails=3 fail_timeout=60s;\n"  // ec2test.Instance does not have a PrivateDNSName :'(
+	serverLine := "server :80 max_fails=3 fail_timeout=60s;\n" // ec2test.Instance does not have a PrivateDNSName :'(
 	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n  %s}\n", UpstreamName, serverLine))
 }
 
@@ -173,4 +173,3 @@ func (s *S) TestGetInstance(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(i.InstanceId, gocheck.Equals, s.instance_ids[0])
 }
-

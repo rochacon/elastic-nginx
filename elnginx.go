@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"io/ioutil"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
-	"path/filepath"
+	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	// "os/exec"
 )
 
@@ -23,17 +23,17 @@ var UpstreamFile = ""
 var UpstreamsPath = ""
 
 type Message struct {
-	Event string
+	Event      string
 	InstanceId string `json:"EC2InstanceId"`
 }
 
 type JSONResponse struct {
 	TopicArn string
-	Message string
+	Message  string
 }
 
 func getUpstreamFilenameForInstance(i *ec2.Instance) string {
-	return filepath.Join(UpstreamsPath, i.InstanceId + ".upstream")
+	return filepath.Join(UpstreamsPath, i.InstanceId+".upstream")
 }
 
 func addInstance(i *ec2.Instance) error {
@@ -145,25 +145,25 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 
 	response_content := ""
 	switch message.Event {
-		case "autoscaling:EC2_INSTANCE_LAUNCH":
-			err := addInstance(&instance)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			response_content = fmt.Sprintf(`Added instance "%s".`, instance.InstanceId)
-
-		case "autoscaling:EC2_INSTANCE_TERMINATE":
-			err := rmInstance(&instance)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			response_content = fmt.Sprintf(`Removed instance "%s".`, instance.InstanceId)
-
-		default:
-			http.Error(w, "Invalid Event.", http.StatusBadRequest)
+	case "autoscaling:EC2_INSTANCE_LAUNCH":
+		err := addInstance(&instance)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
+		}
+		response_content = fmt.Sprintf(`Added instance "%s".`, instance.InstanceId)
+
+	case "autoscaling:EC2_INSTANCE_TERMINATE":
+		err := rmInstance(&instance)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		response_content = fmt.Sprintf(`Removed instance "%s".`, instance.InstanceId)
+
+	default:
+		http.Error(w, "Invalid Event.", http.StatusBadRequest)
+		return
 	}
 
 	if err := reconfigure(); err != nil {
@@ -189,7 +189,7 @@ func main() {
 
 	flag.StringVar(&AWSRegion, "aws-region", "us-east-1", "AWS Region of choice.")
 	Region = aws.Region{
-		Name: AWSRegion,
+		Name:        AWSRegion,
 		EC2Endpoint: fmt.Sprintf("https://ec2.%s.amazonaws.com", AWSRegion),
 		SNSEndpoint: fmt.Sprintf("https://sns.%s.amazonaws.com", AWSRegion),
 	}
@@ -199,10 +199,10 @@ func main() {
 	flag.StringVar(&UpstreamName, "upstream", "backends", "Upstream name to be generated.")
 
 	flag.StringVar(&UpstreamFile, "upstream-file", "/etc/nginx/conf.d/upstreams/backends.upstreams",
-					"Name of the file that holds the upstream block.")
+		"Name of the file that holds the upstream block.")
 
 	flag.StringVar(&UpstreamsPath, "upstreams-path", "/etc/nginx/conf.d/upstreams/backends",
-					"Folder where will be generated servers confs.")
+		"Folder where will be generated servers confs.")
 
 	flag.Parse()
 
@@ -222,4 +222,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
