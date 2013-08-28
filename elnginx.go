@@ -10,8 +10,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"os/exec"
+	"path/filepath"
 )
 
 var AWSAuth = aws.Auth{}
