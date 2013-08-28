@@ -52,11 +52,13 @@ func addInstance(i *ec2.Instance) error {
 func rmInstance(i *ec2.Instance) error {
 	filename := getUpstreamFilenameForInstance(i)
 
-	if _, err := os.Open(filename); os.IsNotExist(err) {
+	err := os.Remove(filename)
+
+	if err != nil && os.IsNotExist(err) {
 		return fmt.Errorf("Instance \"%s\" not found in config.", i.InstanceId)
 	}
 
-	if err := os.Remove(filename); err != nil {
+	if err != nil {
 		return err
 	}
 

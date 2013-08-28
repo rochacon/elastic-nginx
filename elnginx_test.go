@@ -151,8 +151,16 @@ func (s *S) TestRemoveInstance(c *gocheck.C) {
 	err = rmInstance(i)
 	c.Assert(err, gocheck.IsNil)
 
-	_, err = ioutil.ReadFile(getUpstreamFilenameForInstance(i))
+	_, err = os.Stat(getUpstreamFilenameForInstance(i))
 	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
+}
+
+func (s *S) TestRemoveInstanceWithoutConfigFile(c *gocheck.C) {
+	i := &ec2.Instance{InstanceId: "i-00000", PrivateDNSName: "test.internal"}
+
+	// Remove instance
+	err := rmInstance(i)
+	c.Assert(err, gocheck.ErrorMatches, "Instance \"i-00000\" not found in config.")
 }
 
 func (s *S) TestReadMessageWithInvalidJSON(c *gocheck.C) {
