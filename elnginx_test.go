@@ -97,7 +97,7 @@ func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
 	// Check upstreams file
 	content, err := ioutil.ReadFile(UpstreamFile)
 	c.Assert(err, gocheck.IsNil)
-	serverLine := "server :80 max_fails=3 fail_timeout=60s;\n" // ec2test.Instance does not have a PrivateDNSName :'(
+	serverLine := fmt.Sprintf("server %s.internal.invalid:80 max_fails=3 fail_timeout=60s;\n", s.instance_ids[0])
 	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n  %s}\n", UpstreamName, serverLine))
 
 	// Check run NGINX reload
