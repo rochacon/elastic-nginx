@@ -1,7 +1,9 @@
 Elastic NGINX
 =============
 
-`Elastic NGINX` is a AWS SNS hook for registering and unregistering instances that goes up or down by AWS Auto Scaling.
+[![Build Status](https://drone.io/github.com/rochacon/elastic-nginx/status.png)](https://drone.io/github.com/rochacon/elastic-nginx/latest)
+
+`Elastic NGINX` is an AWS SNS hook for registering and unregistering instances that goes up or down by AWS Auto Scaling.
 
 
 Setup
