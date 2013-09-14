@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 )
 
+const VERSION = "0.2"
+
 var AutoScalingGroupARN = ""
 var AWSAuth = aws.Auth{}
 var AWSRegion = ""
@@ -186,7 +188,7 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, response_content)
 }
 
-func main() {
+func init() {
 	flag.StringVar(&AWSRegion, "aws-region", "us-east-1", "AWS Region of choice.")
 	Region = aws.Region{
 		Name:        AWSRegion,
@@ -199,19 +201,21 @@ func main() {
 
 	flag.StringVar(&UpstreamName, "upstream", "backends", "Upstream name to be generated.")
 
-	flag.StringVar(&UpstreamFile, "upstream-file", "/etc/nginx/upstreams.d/backends.upstreams",
-		"Name of the file that holds the upstream block.")
+	flag.StringVar(&UpstreamFile, "upstream-file", "/etc/nginx/upstreams.d/backends.upstreams", "Name of the file that holds the upstream block.")
 
-	flag.StringVar(&UpstreamsPath, "upstreams-path", "/etc/nginx/upstreams.d/backends",
-		"Folder where will be generated servers confs.")
+	flag.StringVar(&UpstreamsPath, "upstreams-path", "/etc/nginx/upstreams.d/backends", "Folder where will be generated servers confs.")
+}
 
+func main() {
+	show_version := flag.Bool("version", false, "Print version and exit.")
 	flag.Parse()
 
-	var err error
-	AWSAuth, err = aws.EnvAuth()
-	if err != nil {
-		log.Fatal(err)
+	if *show_version {
+		fmt.Println("elastic-nginx version", VERSION)
+		return
 	}
+
+	var err error
 
 	if TopicArn == "" {
 		log.Fatal("No Topic ARN found.")
