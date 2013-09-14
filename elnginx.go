@@ -215,14 +215,18 @@ func main() {
 		return
 	}
 
-	var err error
-
 	if TopicArn == "" {
 		log.Fatal("No Topic ARN found.")
 	}
 
 	if AutoScalingGroupARN == "" {
 		log.Fatal("No Auto Scaling Group ARN found")
+	}
+
+	var err error
+	AWSAuth, err = aws.EnvAuth()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	http.HandleFunc("/", readMessage)
