@@ -190,6 +190,15 @@ func (s *S) TestReadMessageFromInvalidTopicArn(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, 404)
 }
 
+func (s *S) TestReadMessageFromInvalidAutoScalingGroupName(c *gocheck.C) {
+	b := strings.NewReader(`{"TopicArn":"arn:test","Message":"{\"AutoScalingGroupARN\":\"arn:asg-test\"}"}`)
+	recorder, request := newRequest("POST", "/", b, c)
+	readMessage(recorder, request)
+	body := readBody(recorder.Body, c)
+	c.Assert(body, gocheck.Equals, "Invalid Auto Scaling Group ARN.\n")
+	c.Assert(recorder.Code, gocheck.Equals, 400)
+}
+
 func (s *S) TestGetInstance(c *gocheck.C) {
 	i, err := getInstance(s.instance_ids[0])
 	c.Assert(err, gocheck.IsNil)

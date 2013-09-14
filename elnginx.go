@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 )
 
+var AutoScalingGroupARN = ""
 var AWSAuth = aws.Auth{}
 var AWSRegion = ""
 var Region = aws.Region{}
@@ -23,11 +24,12 @@ var UpstreamFile = ""
 var UpstreamsPath = ""
 
 type Message struct {
-	Event      string
-	InstanceId string `json:"EC2InstanceId"`
+	Event               string
+	InstanceId          string `json:"EC2InstanceId"`
+	AutoScalingGroupARN string
 }
 
-type JSONResponse struct {
+type JSONInput struct {
 	TopicArn string
 	Message  string
 }
@@ -112,27 +114,31 @@ func reload() ([]byte, error) {
 }
 
 func readMessage(w http.ResponseWriter, r *http.Request) {
-	input, _ := ioutil.ReadAll(r.Body)
+	body, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 
-	log.Println(fmt.Sprintf("Received Payload: %s", input))
+	log.Println(fmt.Sprintf("Received Payload: %s", body))
 
-	response := JSONResponse{}
-	if err := json.Unmarshal(input, &response); err != nil {
+	data := JSONInput{}
+	if err := json.Unmarshal(body, &data); err != nil {
 		http.Error(w, "Invalid JSON.", http.StatusBadRequest)
 		return
 	}
 
-	// Check TopicArn
-	if response.TopicArn != TopicArn {
-		http.Error(w, fmt.Sprintf("No handler for the specified ARN (\"%s\") found.", response.TopicArn), http.StatusNotFound)
+	if data.TopicArn != TopicArn {
+		http.Error(w, fmt.Sprintf("No handler for the specified ARN (\"%s\") found.", data.TopicArn), http.StatusNotFound)
 		return
 	}
 
 	// Load message
 	message := Message{}
-	if err := json.Unmarshal([]byte(response.Message), &message); err != nil {
+	if err := json.Unmarshal([]byte(data.Message), &message); err != nil {
 		http.Error(w, "Invalid Message field JSON.", http.StatusBadRequest)
+		return
+	}
+
+	if message.AutoScalingGroupARN != AutoScalingGroupARN {
+		http.Error(w, "Invalid Auto Scaling Group ARN.", http.StatusBadRequest)
 		return
 	}
 
@@ -189,6 +195,7 @@ func main() {
 	}
 
 	flag.StringVar(&TopicArn, "topic-arn", "", "Topic ARN to be monitored.")
+	flag.StringVar(&AutoScalingGroupARN, "auto-scaling-group-arn", "", "Auto Scaling Group ARN to be monitored.")
 
 	flag.StringVar(&UpstreamName, "upstream", "backends", "Upstream name to be generated.")
 
@@ -208,6 +215,10 @@ func main() {
 
 	if TopicArn == "" {
 		log.Fatal("No Topic ARN found.")
+	}
+
+	if AutoScalingGroupARN == "" {
+		log.Fatal("No Auto Scaling Group ARN found")
 	}
 
 	http.HandleFunc("/", readMessage)
