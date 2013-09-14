@@ -199,10 +199,10 @@ func main() {
 
 	flag.StringVar(&UpstreamName, "upstream", "backends", "Upstream name to be generated.")
 
-	flag.StringVar(&UpstreamFile, "upstream-file", "/etc/nginx/conf.d/upstreams/backends.upstreams",
+	flag.StringVar(&UpstreamFile, "upstream-file", "/etc/nginx/upstreams.d/backends.upstreams",
 		"Name of the file that holds the upstream block.")
 
-	flag.StringVar(&UpstreamsPath, "upstreams-path", "/etc/nginx/conf.d/upstreams/backends",
+	flag.StringVar(&UpstreamsPath, "upstreams-path", "/etc/nginx/upstreams.d/backends",
 		"Folder where will be generated servers confs.")
 
 	flag.Parse()
