@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/rochacon/elastic-nginx/config"
 	"io/ioutil"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
@@ -14,16 +15,13 @@ import (
 	"path/filepath"
 )
 
-const VERSION = "0.2"
+const VERSION = "0.3"
 
-var AutoScalingGroupARN = ""
 var AWSAuth = aws.Auth{}
 var AWSRegion = ""
+var ConfigPath = ""
+var Config = &config.Config{}
 var Region = aws.Region{}
-var TopicArn = ""
-var UpstreamName = ""
-var UpstreamFile = ""
-var UpstreamsPath = ""
 
 type Message struct {
 	Event               string
@@ -36,12 +34,12 @@ type JSONInput struct {
 	Message  string
 }
 
-func getUpstreamFilenameForInstance(i *ec2.Instance) string {
-	return filepath.Join(UpstreamsPath, i.InstanceId+".upstream")
+func getUpstreamFilenameForInstance(u config.Upstream, i *ec2.Instance) string {
+	return filepath.Join(u.ContainerFolder, i.InstanceId+".upstream")
 }
 
-func addInstance(i *ec2.Instance) error {
-	filename := getUpstreamFilenameForInstance(i)
+func addInstance(u config.Upstream, i *ec2.Instance) error {
+	filename := getUpstreamFilenameForInstance(u, i)
 
 	upstream := fmt.Sprintf("server %s:80 max_fails=3 fail_timeout=60s;\n", i.PrivateDNSName)
 	buf := []byte(upstream)
@@ -53,8 +51,8 @@ func addInstance(i *ec2.Instance) error {
 	return nil
 }
 
-func rmInstance(i *ec2.Instance) error {
-	filename := getUpstreamFilenameForInstance(i)
+func rmInstance(u config.Upstream, i *ec2.Instance) error {
+	filename := getUpstreamFilenameForInstance(u, i)
 
 	err := os.Remove(filename)
 
@@ -85,16 +83,16 @@ func getInstance(id string) (ec2.Instance, error) {
 	return ec2.Instance{}, fmt.Errorf("WTFBBQ?!")
 }
 
-func reconfigure() error {
-	upstream, err := os.Create(UpstreamFile)
+func reconfigure(u config.Upstream) error {
+	upstream, err := os.Create(u.File)
 	if err != nil {
 		return err
 	}
 	defer upstream.Close()
 
-	upstream.WriteString(fmt.Sprintf("upstream %s {\n", UpstreamName))
+	upstream.WriteString(fmt.Sprintf("upstream %s {\n", u.Name))
 
-	upstream_filenames, err := filepath.Glob(filepath.Join(UpstreamsPath, "*.upstream"))
+	upstream_filenames, err := filepath.Glob(filepath.Join(u.ContainerFolder, "*.upstream"))
 	if err != nil {
 		return err
 	}
@@ -127,7 +125,7 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if data.TopicArn != TopicArn {
+	if data.TopicArn != Config.TopicArn {
 		http.Error(w, fmt.Sprintf("No handler for the specified ARN (\"%s\") found.", data.TopicArn), http.StatusNotFound)
 		return
 	}
@@ -139,7 +137,7 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if message.AutoScalingGroupARN != AutoScalingGroupARN {
+	if message.AutoScalingGroupARN != Config.Upstreams[0].AutoScalingGroupARN {
 		http.Error(w, "Invalid Auto Scaling Group ARN.", http.StatusBadRequest)
 		return
 	}
@@ -196,14 +194,7 @@ func init() {
 		SNSEndpoint: fmt.Sprintf("https://sns.%s.amazonaws.com", AWSRegion),
 	}
 
-	flag.StringVar(&TopicArn, "topic-arn", "", "Topic ARN to be monitored.")
-	flag.StringVar(&AutoScalingGroupARN, "auto-scaling-group-arn", "", "Auto Scaling Group ARN to be monitored.")
-
-	flag.StringVar(&UpstreamName, "upstream", "backends", "Upstream name to be generated.")
-
-	flag.StringVar(&UpstreamFile, "upstream-file", "/etc/nginx/upstreams.d/backends.upstreams", "Name of the file that holds the upstream block.")
-
-	flag.StringVar(&UpstreamsPath, "upstreams-path", "/etc/nginx/upstreams.d/backends", "Folder where will be generated servers confs.")
+	flag.StringVar(&ConfigPath, "config", "/etc/elastic-nginx.json", "Elastic NGINX config file.")
 }
 
 func main() {
@@ -215,16 +206,13 @@ func main() {
 		return
 	}
 
-	if TopicArn == "" {
-		log.Fatal("No Topic ARN found.")
-	}
-
-	if AutoScalingGroupARN == "" {
-		log.Fatal("No Auto Scaling Group ARN found")
-	}
-
 	var err error
 	AWSAuth, err = aws.EnvAuth()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	Config, err = config.ReadFile(ConfigPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -232,10 +220,12 @@ func main() {
 	http.HandleFunc("/", readMessage)
 
 	log.Println("Listening on :5000")
-	log.Println("Monitoring events on:", TopicArn)
-	log.Println("Upstream:", UpstreamName)
-	log.Println("  File:", UpstreamFile)
-	log.Println("  Path:", UpstreamsPath)
+	log.Println("Monitoring events on:", Config.TopicArn)
+	for i, u := range Config.Upstreams {
+		log.Printf("Upstream %d: %s", i, u.Name)
+		log.Println("  ContainerFolder:", u.ContainerFolder)
+		log.Println("  File:", u.File)
+	}
 	err = http.ListenAndServe(":5000", nil)
 	if err != nil {
 		log.Fatal(err)
