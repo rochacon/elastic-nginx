@@ -5,15 +5,17 @@ import (
 	"io/ioutil"
 )
 
+type Upstream struct {
+	AutoScalingGroupARN string
+	File                string
+	Name                string
+	ContainerFolder     string
+}
+
 type Config struct {
 	TopicArn      string
 	AutoSubscribe bool
-	Upstreams     []struct {
-		AutoScalingGroupARN      string
-		UpstreamFile             string
-		UpstreamName             string
-		UpstreamsContainerFolder string
-	}
+	Upstreams     []Upstream
 }
 
 func ReadFile(path string) (c *Config, err error) {

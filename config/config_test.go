@@ -22,21 +22,21 @@ var _ = gocheck.Suite(&S{
         "Upstreams": [
             {
                 "AutoScalingGroupARN": "arn:asgtest",
-                "UpstreamFile": "/etc/nginx/upstreams.d/backend-0.upstream",
-                "UpstreamName": "backend-0",
-                "UpstreamsContainerFolder": "/etc/nginx/upstreams.d/backend-0"
+                "File": "/etc/nginx/upstreams.d/backend-0.upstream",
+                "Name": "backend-0",
+                "ContainerFolder": "/etc/nginx/upstreams.d/backend-0"
             },
             {
                 "AutoScalingGroupARN": "arn:asgtest",
-                "UpstreamFile": "/etc/nginx/upstreams.d/backend-1.upstream",
-                "UpstreamName": "backend-1",
-                "UpstreamsContainerFolder": "/etc/nginx/upstreams.d/backend-1"
+                "File": "/etc/nginx/upstreams.d/backend-1.upstream",
+                "Name": "backend-1",
+                "ContainerFolder": "/etc/nginx/upstreams.d/backend-1"
             },
             {
                 "AutoScalingGroupARN": "arn:asgtest",
-                "UpstreamFile": "/etc/nginx/upstreams.d/backend-2.upstream",
-                "UpstreamName": "backend-2",
-                "UpstreamsContainerFolder": "/etc/nginx/upstreams.d/backend-2"
+                "File": "/etc/nginx/upstreams.d/backend-2.upstream",
+                "Name": "backend-2",
+                "ContainerFolder": "/etc/nginx/upstreams.d/backend-2"
             }
         ]
     }
@@ -50,9 +50,9 @@ func (s *S) TestParse(c *gocheck.C) {
 	c.Check(cfg.AutoSubscribe, gocheck.Equals, true)
 	for i, upstream := range cfg.Upstreams {
 		c.Check(upstream.AutoScalingGroupARN, gocheck.Equals, "arn:asgtest")
-		c.Check(upstream.UpstreamFile, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d.upstream", i))
-		c.Check(upstream.UpstreamName, gocheck.Equals, fmt.Sprintf("backend-%d", i))
-		c.Check(upstream.UpstreamsContainerFolder, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d", i))
+		c.Check(upstream.File, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d.upstream", i))
+		c.Check(upstream.Name, gocheck.Equals, fmt.Sprintf("backend-%d", i))
+		c.Check(upstream.ContainerFolder, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d", i))
 	}
 }
 
@@ -70,8 +70,8 @@ func (s *S) TestReadFile(c *gocheck.C) {
 	c.Check(cfg.AutoSubscribe, gocheck.Equals, true)
 	for i, upstream := range cfg.Upstreams {
 		c.Check(upstream.AutoScalingGroupARN, gocheck.Equals, "arn:asgtest")
-		c.Check(upstream.UpstreamFile, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d.upstream", i))
-		c.Check(upstream.UpstreamName, gocheck.Equals, fmt.Sprintf("backend-%d", i))
-		c.Check(upstream.UpstreamsContainerFolder, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d", i))
+		c.Check(upstream.File, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d.upstream", i))
+		c.Check(upstream.Name, gocheck.Equals, fmt.Sprintf("backend-%d", i))
+		c.Check(upstream.ContainerFolder, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d", i))
 	}
 }
