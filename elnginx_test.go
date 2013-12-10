@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/globocom/commandmocker"
+	"github.com/rochacon/elastic-nginx/config"
 	"io"
 	"io/ioutil"
 	"launchpad.net/goamz/aws"
@@ -48,16 +49,24 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 
 	AWSRegion = "test"
 	Region = aws.Region{EC2Endpoint: s.testServer.URL()}
-	TopicArn = "arn:test"
-	UpstreamName = "testupstream"
-	UpstreamFile = path.Join(s.testPath, "testupstreamfile")
-	UpstreamsPath = path.Join(s.testPath, "testupstreampath")
+	Config = &config.Config{
+		TopicArn:      "arn:test",
+		AutoSubscribe: false,
+		Upstreams: []config.Upstream{
+			config.Upstream{
+				AutoScalingGroupARN: "arn:asg-test",
+				ContainerFolder:     path.Join(s.testPath, "testupstreamcontainer"),
+				File:                path.Join(s.testPath, "testupstreamfile"),
+				Name:                "test",
+			},
+		},
+	}
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
 	s.logOutput = &bytes.Buffer{}
 	log.SetOutput(s.logOutput)
-	os.MkdirAll(UpstreamsPath, 0755)
+	os.MkdirAll(Config.Upstreams[0].ContainerFolder, 0755)
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {
@@ -87,7 +96,10 @@ func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
 	c.Check(err, gocheck.IsNil)
 	defer commandmocker.Remove(cmd)
 
-	b := strings.NewReader(fmt.Sprintf(`{"TopicArn":"arn:test","Message":"{\"Event\":\"autoscaling:EC2_INSTANCE_LAUNCH\",\"EC2InstanceId\":\"%s\"}"}`, s.instance_ids[0]))
+	payload := `{"TopicArn":"arn:test","Message":` +
+		`"{\"AutoScalingGroupARN\":\"arn:asg-test\",\"Event\":\"autoscaling:EC2_INSTANCE_LAUNCH\",` +
+		`\"EC2InstanceId\":\"%s\"}"}`
+	b := strings.NewReader(fmt.Sprintf(payload, s.instance_ids[0]))
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
@@ -95,21 +107,23 @@ func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, 200)
 
 	// Check upstreams file
-	content, err := ioutil.ReadFile(UpstreamFile)
+	upstream := Config.Upstreams[0]
+	content, err := ioutil.ReadFile(upstream.File)
 	c.Assert(err, gocheck.IsNil)
 	serverLine := fmt.Sprintf("server %s.internal.invalid:80 max_fails=3 fail_timeout=60s;\n", s.instance_ids[0])
-	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n  %s}\n", UpstreamName, serverLine))
+	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n  %s}\n", upstream.Name, serverLine))
 
 	// Check run NGINX reload
 	c.Assert(commandmocker.Ran(cmd), gocheck.Equals, true)
 }
 
 func (s *S) TestAddInstance(c *gocheck.C) {
+	u := Config.Upstreams[0]
 	i := &ec2.Instance{InstanceId: "i-00000", PrivateDNSName: "test.internal"}
-	err := addInstance(i)
+	err := addInstance(u, i)
 	c.Assert(err, gocheck.IsNil)
 
-	content, err := ioutil.ReadFile(getUpstreamFilenameForInstance(i))
+	content, err := ioutil.ReadFile(getUpstreamFilenameForInstance(u, i))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(string(content), gocheck.Equals, "server test.internal:80 max_fails=3 fail_timeout=60s;\n")
 }
@@ -120,12 +134,15 @@ func (s *S) TestReadMessageWithTerminateJSON(c *gocheck.C) {
 	defer commandmocker.Remove(cmd)
 
 	// Setup instance file
+	u := Config.Upstreams[0]
 	instance := &ec2.Instance{InstanceId: s.instance_ids[0], PrivateDNSName: "test.internal"}
-	if err := addInstance(instance); err != nil {
+	if err := addInstance(u, instance); err != nil {
 		c.Error(err)
 	}
 
-	b := strings.NewReader(fmt.Sprintf(`{"TopicArn":"arn:test","Message":"{\"Event\":\"autoscaling:EC2_INSTANCE_TERMINATE\",\"EC2InstanceId\":\"%s\"}"}`, s.instance_ids[0]))
+	payload := `{"TopicArn":"arn:test","Message":
+	"{\"AutoScalingGroupARN\":\"arn:asg-test\",\"Event\":\"autoscaling:EC2_INSTANCE_TERMINATE\",\"EC2InstanceId\":\"%s\"}"}`
+	b := strings.NewReader(fmt.Sprintf(payload, s.instance_ids[0]))
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
@@ -133,33 +150,36 @@ func (s *S) TestReadMessageWithTerminateJSON(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, 200)
 
 	// Check upstreams file
-	content, err := ioutil.ReadFile(UpstreamFile)
+	content, err := ioutil.ReadFile(u.File)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n}\n", UpstreamName))
+	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n}\n", u.Name))
 
 	// Check run NGINX reload
 	c.Assert(commandmocker.Ran(cmd), gocheck.Equals, true)
 }
 
 func (s *S) TestRemoveInstance(c *gocheck.C) {
+	u := Config.Upstreams[0]
+
 	// Setup test instance
 	i := &ec2.Instance{InstanceId: "i-00000", PrivateDNSName: "test.internal"}
-	err := addInstance(i)
+	err := addInstance(u, i)
 	c.Assert(err, gocheck.IsNil)
 
 	// Remove instance
-	err = rmInstance(i)
+	err = rmInstance(u, i)
 	c.Assert(err, gocheck.IsNil)
 
-	_, err = os.Stat(getUpstreamFilenameForInstance(i))
+	_, err = os.Stat(getUpstreamFilenameForInstance(u, i))
 	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
 }
 
 func (s *S) TestRemoveInstanceWithoutConfigFile(c *gocheck.C) {
+	u := Config.Upstreams[0]
 	i := &ec2.Instance{InstanceId: "i-00000", PrivateDNSName: "test.internal"}
 
 	// Remove instance
-	err := rmInstance(i)
+	err := rmInstance(u, i)
 	c.Assert(err, gocheck.ErrorMatches, "Instance \"i-00000\" not found in config.")
 }
 
@@ -191,7 +211,7 @@ func (s *S) TestReadMessageFromInvalidTopicArn(c *gocheck.C) {
 }
 
 func (s *S) TestReadMessageFromInvalidAutoScalingGroupName(c *gocheck.C) {
-	b := strings.NewReader(`{"TopicArn":"arn:test","Message":"{\"AutoScalingGroupARN\":\"arn:asg-test\"}"}`)
+	b := strings.NewReader(`{"TopicArn":"arn:test","Message":"{\"AutoScalingGroupARN\":\"arn:asg-invalid\"}"}`)
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
@@ -206,6 +226,8 @@ func (s *S) TestGetInstance(c *gocheck.C) {
 }
 
 func (s *S) TestGetUpstreamFilenameForInstance(c *gocheck.C) {
-	path := getUpstreamFilenameForInstance(&ec2.Instance{InstanceId: "i-00000"})
-	c.Assert(path, gocheck.Equals, filepath.Join(UpstreamsPath, "i-00000.upstream"))
+	u := Config.Upstreams[0]
+	i := &ec2.Instance{InstanceId: "i-00000"}
+	path := getUpstreamFilenameForInstance(u, i)
+	c.Assert(path, gocheck.Equals, filepath.Join(u.ContainerFolder, "i-00000.upstream"))
 }

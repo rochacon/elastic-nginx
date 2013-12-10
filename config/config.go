@@ -7,9 +7,9 @@ import (
 
 type Upstream struct {
 	AutoScalingGroupARN string
+	ContainerFolder     string
 	File                string
 	Name                string
-	ContainerFolder     string
 }
 
 type Config struct {

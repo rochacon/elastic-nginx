@@ -137,42 +137,40 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if message.AutoScalingGroupARN != Config.Upstreams[0].AutoScalingGroupARN {
-		http.Error(w, "Invalid Auto Scaling Group ARN.", http.StatusBadRequest)
-		return
+	for _, u := range Config.Upstreams {
+		if message.AutoScalingGroupARN == u.AutoScalingGroupARN {
+			switch message.Event {
+			case "autoscaling:EC2_INSTANCE_LAUNCH":
+				launch(w, u, message.InstanceId)
+			case "autoscaling:EC2_INSTANCE_TERMINATE":
+				terminate(w, u, message.InstanceId)
+			default:
+				http.Error(w, "Invalid Event.", http.StatusBadRequest)
+				return
+			}
+			return
+		}
 	}
 
+	http.Error(w, "Invalid Auto Scaling Group ARN.", http.StatusBadRequest)
+	return
+}
+
+func launch(w http.ResponseWriter, u config.Upstream, instanceId string) {
 	// Get EC2 Instance
-	instance, err := getInstance(message.InstanceId)
+	instance, err := getInstance(instanceId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	response_content := ""
-	switch message.Event {
-	case "autoscaling:EC2_INSTANCE_LAUNCH":
-		err := addInstance(&instance)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		response_content = fmt.Sprintf(`Added instance "%s".`, instance.InstanceId)
-
-	case "autoscaling:EC2_INSTANCE_TERMINATE":
-		err := rmInstance(&instance)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		response_content = fmt.Sprintf(`Removed instance "%s".`, instance.InstanceId)
-
-	default:
-		http.Error(w, "Invalid Event.", http.StatusBadRequest)
+	err = addInstance(u, &instance)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := reconfigure(); err != nil {
+	if err := reconfigure(u); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -182,24 +180,54 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	response_content := fmt.Sprintf(`Added instance "%s".`, instance.InstanceId)
+	log.Println(response_content)
+	fmt.Fprintf(w, response_content)
+}
+
+func terminate(w http.ResponseWriter, u config.Upstream, instanceId string) {
+	// Get EC2 Instance
+	instance, err := getInstance(instanceId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = rmInstance(u, &instance)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := reconfigure(u); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := reload(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response_content := fmt.Sprintf(`Removed instance "%s".`, instance.InstanceId)
 	log.Println(response_content)
 	fmt.Fprintf(w, response_content)
 }
 
 func init() {
 	flag.StringVar(&AWSRegion, "aws-region", "us-east-1", "AWS Region of choice.")
-	Region = aws.Region{
-		Name:        AWSRegion,
-		EC2Endpoint: fmt.Sprintf("https://ec2.%s.amazonaws.com", AWSRegion),
-		SNSEndpoint: fmt.Sprintf("https://sns.%s.amazonaws.com", AWSRegion),
-	}
-
 	flag.StringVar(&ConfigPath, "config", "/etc/elastic-nginx.json", "Elastic NGINX config file.")
 }
 
 func main() {
 	show_version := flag.Bool("version", false, "Print version and exit.")
 	flag.Parse()
+
+	Region = aws.Region{
+		Name:        AWSRegion,
+		EC2Endpoint: fmt.Sprintf("https://ec2.%s.amazonaws.com", AWSRegion),
+		SNSEndpoint: fmt.Sprintf("https://sns.%s.amazonaws.com", AWSRegion),
+	}
 
 	if *show_version {
 		fmt.Println("elastic-nginx version", VERSION)
@@ -220,7 +248,8 @@ func main() {
 	http.HandleFunc("/", readMessage)
 
 	log.Println("Listening on :5000")
-	log.Println("Monitoring events on:", Config.TopicArn)
+	log.Println("Monitoring events on topic:", Config.TopicArn)
+	log.Println("AWS Region:", AWSRegion)
 	for i, u := range Config.Upstreams {
 		log.Printf("Upstream %d: %s", i, u.Name)
 		log.Println("  ContainerFolder:", u.ContainerFolder)
