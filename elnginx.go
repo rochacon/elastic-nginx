@@ -30,8 +30,10 @@ type Message struct {
 }
 
 type JSONInput struct {
-	TopicArn string
-	Message  string
+	Type         string
+	TopicArn     string
+	Message      string
+	SubscribeURL string
 }
 
 func getUpstreamFilenameForInstance(u config.Upstream, i *ec2.Instance) string {
@@ -127,6 +129,15 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 
 	if data.TopicArn != Config.TopicArn {
 		http.Error(w, fmt.Sprintf("No handler for the specified ARN (\"%s\") found.", data.TopicArn), http.StatusNotFound)
+		return
+	}
+
+	if data.Type == "SubscriptionConfirmation" {
+		if Config.AutoSubscribe {
+			go http.Get(data.SubscribeURL)
+			w.WriteHeader(http.StatusAccepted)
+			fmt.Fprintf(w, fmt.Sprintf(`Subscribed to "%s".`, data.TopicArn))
+		}
 		return
 	}
 

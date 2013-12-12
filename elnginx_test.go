@@ -93,7 +93,7 @@ func readBody(b io.Reader, c *gocheck.C) string {
 
 func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
 	cmd, err := commandmocker.Add("sudo", "service nginx reload")
-	c.Check(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(cmd)
 
 	payload := `{"TopicArn":"arn:test","Message":` +
@@ -130,7 +130,7 @@ func (s *S) TestAddInstance(c *gocheck.C) {
 
 func (s *S) TestReadMessageWithTerminateJSON(c *gocheck.C) {
 	cmd, err := commandmocker.Add("sudo", "service nginx reload")
-	c.Check(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(cmd)
 
 	// Setup instance file
@@ -230,4 +230,40 @@ func (s *S) TestGetUpstreamFilenameForInstance(c *gocheck.C) {
 	i := &ec2.Instance{InstanceId: "i-00000"}
 	path := getUpstreamFilenameForInstance(u, i)
 	c.Assert(path, gocheck.Equals, filepath.Join(u.ContainerFolder, "i-00000.upstream"))
+}
+
+func (s *S) TestAutoSubscribe(c *gocheck.C) {
+	Config.AutoSubscribe = true
+
+	subscriptionUrlCalled := make(chan bool)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		subscriptionUrlCalled <- true
+	}))
+	defer server.Close()
+
+	b := strings.NewReader(fmt.Sprintf(`{"TopicArn":"arn:test","Type":"SubscriptionConfirmation","SubscribeURL":"%s"}`, server.URL))
+
+	recorder, request := newRequest("POST", "/", b, c)
+	readMessage(recorder, request)
+	c.Assert(<-subscriptionUrlCalled, gocheck.Equals, true)
+	body := readBody(recorder.Body, c)
+	c.Assert(body, gocheck.Equals, `Subscribed to "arn:test".`)
+	c.Assert(recorder.Code, gocheck.Equals, 202)
+}
+
+func (s *S) TestAutoSubscribeOff(c *gocheck.C) {
+	Config.AutoSubscribe = false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("This should not be called")
+	}))
+	defer server.Close()
+
+	b := strings.NewReader(fmt.Sprintf(`{"TopicArn":"arn:test","Type":"SubscriptionConfirmation","SubscribeURL":"%s"}`, server.URL))
+
+	recorder, request := newRequest("POST", "/", b, c)
+	readMessage(recorder, request)
+	body := readBody(recorder.Body, c)
+	c.Assert(body, gocheck.Equals, "")
+	c.Assert(recorder.Code, gocheck.Equals, 200)
 }
