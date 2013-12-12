@@ -129,12 +129,15 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 
 	data := JSONInput{}
 	if err := json.Unmarshal(body, &data); err != nil {
+		log.Println("Invalid JSON.")
 		http.Error(w, "Invalid JSON.", http.StatusBadRequest)
 		return
 	}
 
 	if data.TopicArn != Config.TopicArn {
-		http.Error(w, fmt.Sprintf("No handler for the specified ARN (\"%s\") found.", data.TopicArn), http.StatusNotFound)
+		output := fmt.Sprintf("No handler for the specified ARN (\"%s\") found.", data.TopicArn)
+		log.Println(output)
+		http.Error(w, output, http.StatusNotFound)
 		return
 	}
 
@@ -142,7 +145,9 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 		if Config.AutoSubscribe {
 			go http.Get(data.SubscribeURL)
 			w.WriteHeader(http.StatusAccepted)
-			fmt.Fprintf(w, fmt.Sprintf(`Subscribed to "%s".`, data.TopicArn))
+			output := fmt.Sprintf(`Subscribed to "%s".`, data.TopicArn)
+			log.Println(output)
+			fmt.Fprintf(w, output)
 		}
 		return
 	}
@@ -150,6 +155,7 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 	// Load message
 	message := Message{}
 	if err := json.Unmarshal([]byte(data.Message), &message); err != nil {
+		log.Println("Invalid Message field JSON.")
 		http.Error(w, "Invalid Message field JSON.", http.StatusBadRequest)
 		return
 	}
@@ -162,6 +168,7 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 			case "autoscaling:EC2_INSTANCE_TERMINATE":
 				terminate(w, u, message.InstanceId)
 			default:
+				log.Println("Invaild Event.")
 				http.Error(w, "Invalid Event.", http.StatusBadRequest)
 				return
 			}
@@ -169,7 +176,9 @@ func readMessage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Error(w, "Invalid Auto Scaling Group ARN.", http.StatusBadRequest)
+	output := fmt.Sprintf(`Invalid Auto Scaling Group ARN "%s".`, message.AutoScalingGroupARN)
+	log.Println(output)
+	http.Error(w, output, http.StatusBadRequest)
 	return
 }
 
@@ -197,9 +206,9 @@ func launch(w http.ResponseWriter, u config.Upstream, instanceId string) {
 		return
 	}
 
-	response_content := fmt.Sprintf(`Added instance "%s".`, instance.InstanceId)
-	log.Println(response_content)
-	fmt.Fprintf(w, response_content)
+	output := fmt.Sprintf(`Added instance "%s".`, instance.InstanceId)
+	log.Println(output)
+	fmt.Fprintf(w, output)
 }
 
 func terminate(w http.ResponseWriter, u config.Upstream, instanceId string) {
@@ -226,9 +235,9 @@ func terminate(w http.ResponseWriter, u config.Upstream, instanceId string) {
 		return
 	}
 
-	response_content := fmt.Sprintf(`Removed instance "%s".`, instance.InstanceId)
-	log.Println(response_content)
-	fmt.Fprintf(w, response_content)
+	output := fmt.Sprintf(`Removed instance "%s".`, instance.InstanceId)
+	log.Println(output)
+	fmt.Fprintf(w, output)
 }
 
 func init() {
