@@ -215,7 +215,7 @@ func (s *S) TestReadMessageFromInvalidAutoScalingGroupName(c *gocheck.C) {
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
-	c.Assert(body, gocheck.Equals, "Invalid Auto Scaling Group ARN.\n")
+	c.Assert(body, gocheck.Equals, "Invalid Auto Scaling Group ARN \"arn:asg-invalid\".\n")
 	c.Assert(recorder.Code, gocheck.Equals, 400)
 }
 
