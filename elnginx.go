@@ -15,7 +15,7 @@ import (
 	"path/filepath"
 )
 
-const VERSION = "0.3-beta2"
+const VERSION = "0.3"
 
 var AWSAuth = aws.Auth{}
 var AWSRegion = ""
