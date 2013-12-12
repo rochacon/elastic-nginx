@@ -21,19 +21,19 @@ respawn limit 10 5
 
 console log
 
-# Settings
 env AWS_ACCESS_KEY_ID="A_AWS_ACCESS_KEY_ID"
 env AWS_SECRET_ACCESS_KEY="A_AWS_SECRET_ACCESS_KEY"
 
-exec /usr/local/bin/elastic-nginx -aws-region="us-east-1" -topic-arn="arn:test" -upstream="backends" -upstream-file="/etc/nginx/conf.d/upstreams/backends.upstreams" -upstreams-path="/etc/nginx/conf.d/upstreams/backends"
+exec /usr/local/bin/elastic-nginx -aws-region="us-east-1" -config "/etc/elastic-nginx.json"
 ```
 
-Configuration options can be listed with the `-h` or `--help` flags.
+A sample configuration file can be found at etc/elastic-nginx.example.json.
+More configuration options can be listed with the `-h` or `--help` flags.
 
 **Notes:**
 
   * You'll need AWS credentials with EC2 reading permissions.
-  * You'll need to subscribe to the SNS Topic after registering the HTTP hook. Look at the `elastic-nginx` output to get the received subscribe URL.
+  * You'll need to subscribe to the SNS Topic after registering the HTTP hook. You can do this automatically by turning auto-subscribe feature on. (see config file)
 
 
 Testing
@@ -46,4 +46,4 @@ go get github.com/globocom/commandmocker
 go get launchpad.net/gocheck
 ```
 
-Run `go test` and see everything passing. :smile:
+Run `go test ./...` and see everything passing. :smile:

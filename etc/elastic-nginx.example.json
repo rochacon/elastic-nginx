@@ -1,0 +1,18 @@
+{
+    "TopicArn": "arn:aws:sns:autoscaling",
+    "AutoSubscribe": false,
+    "Upstreams": [
+        {
+            "AutoScalingGroupARN": "arn:aws:autoscaling:backends-0",
+            "ContainerFolder": "/etc/nginx/upstreams.d/backends-0",
+            "File": "/etc/nginx/upstreams.d/backends-0.upstreams",
+            "Name": "backends-0"
+        },
+        {
+            "AutoScalingGroupARN": "arn:aws:autoscaling:backends-1",
+            "ContainerFolder": "/etc/nginx/upstreams.d/backends-1",
+            "File": "/etc/nginx/upstreams.d/backends-1.upstreams",
+            "Name": "backends-1"
+        }
+    ]
+}
