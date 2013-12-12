@@ -43,6 +43,9 @@ func getUpstreamFilenameForInstance(u config.Upstream, i *ec2.Instance) string {
 func addInstance(u config.Upstream, i *ec2.Instance) error {
 	filename := getUpstreamFilenameForInstance(u, i)
 
+	u.Lock()
+	defer u.Unlock()
+
 	upstream := fmt.Sprintf("server %s:80 max_fails=3 fail_timeout=60s;\n", i.PrivateDNSName)
 	buf := []byte(upstream)
 
@@ -86,6 +89,9 @@ func getInstance(id string) (ec2.Instance, error) {
 }
 
 func reconfigure(u config.Upstream) error {
+	u.Lock()
+	defer u.Unlock()
+
 	upstream, err := os.Create(u.File)
 	if err != nil {
 		return err

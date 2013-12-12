@@ -3,9 +3,11 @@ package config
 import (
 	"encoding/json"
 	"io/ioutil"
+	"sync"
 )
 
 type Upstream struct {
+	sync.Mutex
 	AutoScalingGroupARN string
 	ContainerFolder     string
 	File                string
