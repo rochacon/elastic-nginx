@@ -246,6 +246,7 @@ func init() {
 }
 
 func main() {
+	listen := flag.String("listen", "127.0.0.1:5000", "Address to listen to.")
 	show_version := flag.Bool("version", false, "Print version and exit.")
 	flag.Parse()
 
@@ -273,7 +274,7 @@ func main() {
 
 	http.HandleFunc("/", readMessage)
 
-	log.Println("Listening on :5000")
+	log.Println("Listening on", *listen)
 	log.Println("Monitoring events on topic:", Config.TopicArn)
 	log.Println("AWS Region:", AWSRegion)
 	for i, u := range Config.Upstreams {
@@ -281,7 +282,7 @@ func main() {
 		log.Println("  ContainerFolder:", u.ContainerFolder)
 		log.Println("  File:", u.File)
 	}
-	err = http.ListenAndServe(":5000", nil)
+	err = http.ListenAndServe(*listen, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
