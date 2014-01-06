@@ -46,7 +46,7 @@ func addInstance(u config.Upstream, i *ec2.Instance) error {
 	u.Lock()
 	defer u.Unlock()
 
-	upstream := fmt.Sprintf("server %s:80 max_fails=3 fail_timeout=60s;\n", i.PrivateDNSName)
+	upstream := fmt.Sprintf("server %s:80 max_fails=3 fail_timeout=60s; # %s\n", i.PrivateDNSName, i.InstanceId)
 	buf := []byte(upstream)
 
 	if err := ioutil.WriteFile(filename, buf, 0640); err != nil {

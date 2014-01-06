@@ -110,7 +110,7 @@ func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
 	upstream := Config.Upstreams[0]
 	content, err := ioutil.ReadFile(upstream.File)
 	c.Assert(err, gocheck.IsNil)
-	serverLine := fmt.Sprintf("server %s.internal.invalid:80 max_fails=3 fail_timeout=60s;\n", s.instance_ids[0])
+	serverLine := fmt.Sprintf("server %s.internal.invalid:80 max_fails=3 fail_timeout=60s; # %s\n", s.instance_ids[0], s.instance_ids[0])
 	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n  %s}\n", upstream.Name, serverLine))
 
 	// Check run NGINX reload
@@ -125,7 +125,7 @@ func (s *S) TestAddInstance(c *gocheck.C) {
 
 	content, err := ioutil.ReadFile(getUpstreamFilenameForInstance(u, i))
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(content), gocheck.Equals, "server test.internal:80 max_fails=3 fail_timeout=60s;\n")
+	c.Assert(string(content), gocheck.Equals, "server test.internal:80 max_fails=3 fail_timeout=60s; # i-00000\n")
 }
 
 func (s *S) TestReadMessageWithTerminateJSON(c *gocheck.C) {
