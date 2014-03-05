@@ -36,6 +36,55 @@ type JSONInput struct {
 	SubscribeURL string
 }
 
+func init() {
+	flag.StringVar(&AWSRegion, "aws-region", "us-east-1", "AWS Region of choice.")
+	flag.StringVar(&ConfigPath, "config", "/etc/elastic-nginx.json", "Elastic NGINX config file.")
+}
+
+func main() {
+	listen := flag.String("listen", "127.0.0.1:5000", "Address to listen to.")
+	show_version := flag.Bool("version", false, "Print version and exit.")
+	flag.Parse()
+
+	Region = aws.Region{
+		Name:        AWSRegion,
+		EC2Endpoint: fmt.Sprintf("https://ec2.%s.amazonaws.com", AWSRegion),
+		SNSEndpoint: fmt.Sprintf("https://sns.%s.amazonaws.com", AWSRegion),
+	}
+
+	if *show_version {
+		fmt.Println("elastic-nginx version", VERSION)
+		return
+	}
+
+	var err error
+	AWSAuth, err = aws.EnvAuth()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	Config, err = config.ReadFile(ConfigPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	http.HandleFunc("/", readMessage)
+
+	log.Println("Listening on", *listen)
+	log.Println("Monitoring events on topic:", Config.TopicArn)
+	log.Println("AWS Region:", AWSRegion)
+	for i, u := range Config.Upstreams {
+		log.Printf("Upstream %d: %s", i, u.Name)
+		log.Println("  ContainerFolder:", u.ContainerFolder)
+		log.Println("  File:", u.File)
+	}
+	err = http.ListenAndServe(*listen, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+
 func getUpstreamFilenameForInstance(u config.Upstream, i *ec2.Instance) string {
 	return filepath.Join(u.ContainerFolder, i.InstanceId+".upstream")
 }
@@ -238,52 +287,4 @@ func terminate(w http.ResponseWriter, u config.Upstream, instanceId string) {
 	output := fmt.Sprintf(`Removed instance "%s".`, instance.InstanceId)
 	log.Println(output)
 	fmt.Fprintf(w, output)
-}
-
-func init() {
-	flag.StringVar(&AWSRegion, "aws-region", "us-east-1", "AWS Region of choice.")
-	flag.StringVar(&ConfigPath, "config", "/etc/elastic-nginx.json", "Elastic NGINX config file.")
-}
-
-func main() {
-	listen := flag.String("listen", "127.0.0.1:5000", "Address to listen to.")
-	show_version := flag.Bool("version", false, "Print version and exit.")
-	flag.Parse()
-
-	Region = aws.Region{
-		Name:        AWSRegion,
-		EC2Endpoint: fmt.Sprintf("https://ec2.%s.amazonaws.com", AWSRegion),
-		SNSEndpoint: fmt.Sprintf("https://sns.%s.amazonaws.com", AWSRegion),
-	}
-
-	if *show_version {
-		fmt.Println("elastic-nginx version", VERSION)
-		return
-	}
-
-	var err error
-	AWSAuth, err = aws.EnvAuth()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	Config, err = config.ReadFile(ConfigPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	http.HandleFunc("/", readMessage)
-
-	log.Println("Listening on", *listen)
-	log.Println("Monitoring events on topic:", Config.TopicArn)
-	log.Println("AWS Region:", AWSRegion)
-	for i, u := range Config.Upstreams {
-		log.Printf("Upstream %d: %s", i, u.Name)
-		log.Println("  ContainerFolder:", u.ContainerFolder)
-		log.Println("  File:", u.File)
-	}
-	err = http.ListenAndServe(*listen, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
