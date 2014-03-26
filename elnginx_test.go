@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/globocom/commandmocker"
 	"github.com/rochacon/elastic-nginx/config"
+	"github.com/tsuru/commandmocker"
 	"io"
 	"io/ioutil"
 	"launchpad.net/goamz/aws"
