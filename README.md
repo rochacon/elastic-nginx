@@ -42,7 +42,7 @@ Testing
 To run the test suite you'll need a couple more dependencies:
 
 ```
-go get github.com/globocom/commandmocker
+go get github.com/tsuru/commandmocker
 go get launchpad.net/gocheck
 ```
 
