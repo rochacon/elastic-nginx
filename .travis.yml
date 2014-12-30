@@ -1,8 +1,11 @@
-image: go1.4
-script:
+language: go
+go:
+  - 1.4
+install:
   - go get
   - go get github.com/tsuru/commandmocker
   - go get gopkg.in/check.v1
+script:
   - go test -i ./...
   - go test -short ./...
   - go build
