@@ -5,9 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/rochacon/elastic-nginx/config"
+	"gopkg.in/amz.v1/aws"
+	"gopkg.in/amz.v1/ec2"
 	"io/ioutil"
-	"launchpad.net/goamz/aws"
-	"launchpad.net/goamz/ec2"
 	"log"
 	"net/http"
 	"os"
@@ -83,7 +83,6 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
 
 func getUpstreamFilenameForInstance(u config.Upstream, i *ec2.Instance) string {
 	return filepath.Join(u.ContainerFolder, i.InstanceId+".upstream")

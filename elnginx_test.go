@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"github.com/rochacon/elastic-nginx/config"
 	"github.com/tsuru/commandmocker"
+	"gopkg.in/amz.v1/aws"
+	"gopkg.in/amz.v1/ec2"
+	"gopkg.in/amz.v1/ec2/ec2test"
 	"io"
 	"io/ioutil"
-	"launchpad.net/goamz/aws"
-	"launchpad.net/goamz/ec2"
-	"launchpad.net/goamz/ec2/ec2test"
 	"launchpad.net/gocheck"
 	"log"
 	"net/http"
@@ -48,7 +48,8 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.testPath = c.MkDir()
 
 	AWSRegion = "test"
-	Region = aws.Region{EC2Endpoint: s.testServer.URL()}
+	Region = aws.USEast
+	Region.EC2Endpoint = s.testServer.URL()
 	Config = &config.Config{
 		TopicArn:      "arn:test",
 		AutoSubscribe: false,
