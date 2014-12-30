@@ -8,9 +8,9 @@ import (
 	"gopkg.in/amz.v1/aws"
 	"gopkg.in/amz.v1/ec2"
 	"gopkg.in/amz.v1/ec2/ec2test"
+	"gopkg.in/check.v1"
 	"io"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +22,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
 type S struct {
@@ -33,9 +33,9 @@ type S struct {
 	testServer   *ec2test.Server
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *check.C) {
 	var err error
 
 	s.testServer, err = ec2test.NewServer()
@@ -64,37 +64,37 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	}
 }
 
-func (s *S) SetUpTest(c *gocheck.C) {
+func (s *S) SetUpTest(c *check.C) {
 	s.logOutput = &bytes.Buffer{}
 	log.SetOutput(s.logOutput)
 	os.MkdirAll(Config.Upstreams[0].ContainerFolder, 0755)
 }
 
-func (s *S) TearDownTest(c *gocheck.C) {
+func (s *S) TearDownTest(c *check.C) {
 	os.RemoveAll(s.testPath)
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	s.testServer.Quit()
 }
 
-func newRequest(method, url string, b io.Reader, c *gocheck.C) (*httptest.ResponseRecorder, *http.Request) {
+func newRequest(method, url string, b io.Reader, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	request, err := http.NewRequest(method, url, b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	return recorder, request
 }
 
-func readBody(b io.Reader, c *gocheck.C) string {
+func readBody(b io.Reader, c *check.C) string {
 	body, err := ioutil.ReadAll(b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	return string(body)
 }
 
-func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
+func (s *S) TestReadMessageWithLaunchJSON(c *check.C) {
 	cmd, err := commandmocker.Add("sudo", "service nginx reload")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer commandmocker.Remove(cmd)
 
 	payload := `{"TopicArn":"arn:test","Message":` +
@@ -104,34 +104,34 @@ func (s *S) TestReadMessageWithLaunchJSON(c *gocheck.C) {
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
-	c.Assert(body, gocheck.Equals, fmt.Sprintf(`Added instance "%s".`, s.instance_ids[0]))
-	c.Assert(recorder.Code, gocheck.Equals, 200)
+	c.Assert(body, check.Equals, fmt.Sprintf(`Added instance "%s".`, s.instance_ids[0]))
+	c.Assert(recorder.Code, check.Equals, 200)
 
 	// Check upstreams file
 	upstream := Config.Upstreams[0]
 	content, err := ioutil.ReadFile(upstream.File)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	serverLine := fmt.Sprintf("server %s.internal.invalid:80 max_fails=3 fail_timeout=60s; # %s\n", s.instance_ids[0], s.instance_ids[0])
-	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n  %s}\n", upstream.Name, serverLine))
+	c.Assert(string(content), check.Equals, fmt.Sprintf("upstream %s {\n  %s}\n", upstream.Name, serverLine))
 
 	// Check run NGINX reload
-	c.Assert(commandmocker.Ran(cmd), gocheck.Equals, true)
+	c.Assert(commandmocker.Ran(cmd), check.Equals, true)
 }
 
-func (s *S) TestAddInstance(c *gocheck.C) {
+func (s *S) TestAddInstance(c *check.C) {
 	u := Config.Upstreams[0]
 	i := &ec2.Instance{InstanceId: "i-00000", PrivateDNSName: "test.internal"}
 	err := addInstance(u, i)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 
 	content, err := ioutil.ReadFile(getUpstreamFilenameForInstance(u, i))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(content), gocheck.Equals, "server test.internal:80 max_fails=3 fail_timeout=60s; # i-00000\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(string(content), check.Equals, "server test.internal:80 max_fails=3 fail_timeout=60s; # i-00000\n")
 }
 
-func (s *S) TestReadMessageWithTerminateJSON(c *gocheck.C) {
+func (s *S) TestReadMessageWithTerminateJSON(c *check.C) {
 	cmd, err := commandmocker.Add("sudo", "service nginx reload")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer commandmocker.Remove(cmd)
 
 	// Setup instance file
@@ -147,93 +147,93 @@ func (s *S) TestReadMessageWithTerminateJSON(c *gocheck.C) {
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
-	c.Assert(body, gocheck.Equals, fmt.Sprintf(`Removed instance "%s".`, s.instance_ids[0]))
-	c.Assert(recorder.Code, gocheck.Equals, 200)
+	c.Assert(body, check.Equals, fmt.Sprintf(`Removed instance "%s".`, s.instance_ids[0]))
+	c.Assert(recorder.Code, check.Equals, 200)
 
 	// Check upstreams file
 	content, err := ioutil.ReadFile(u.File)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(content), gocheck.Equals, fmt.Sprintf("upstream %s {\n}\n", u.Name))
+	c.Assert(err, check.IsNil)
+	c.Assert(string(content), check.Equals, fmt.Sprintf("upstream %s {\n}\n", u.Name))
 
 	// Check run NGINX reload
-	c.Assert(commandmocker.Ran(cmd), gocheck.Equals, true)
+	c.Assert(commandmocker.Ran(cmd), check.Equals, true)
 }
 
-func (s *S) TestRemoveInstance(c *gocheck.C) {
+func (s *S) TestRemoveInstance(c *check.C) {
 	u := Config.Upstreams[0]
 
 	// Setup test instance
 	i := &ec2.Instance{InstanceId: "i-00000", PrivateDNSName: "test.internal"}
 	err := addInstance(u, i)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 
 	// Remove instance
 	err = rmInstance(u, i)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 
 	_, err = os.Stat(getUpstreamFilenameForInstance(u, i))
-	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
+	c.Assert(os.IsNotExist(err), check.Equals, true)
 }
 
-func (s *S) TestRemoveInstanceWithoutConfigFile(c *gocheck.C) {
+func (s *S) TestRemoveInstanceWithoutConfigFile(c *check.C) {
 	u := Config.Upstreams[0]
 	i := &ec2.Instance{InstanceId: "i-00000", PrivateDNSName: "test.internal"}
 
 	// Remove instance
 	err := rmInstance(u, i)
-	c.Assert(err, gocheck.ErrorMatches, "Instance \"i-00000\" not found in config.")
+	c.Assert(err, check.ErrorMatches, "Instance \"i-00000\" not found in config.")
 }
 
-func (s *S) TestReadMessageWithInvalidJSON(c *gocheck.C) {
+func (s *S) TestReadMessageWithInvalidJSON(c *check.C) {
 	b := strings.NewReader("")
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
-	c.Assert(body, gocheck.Equals, "Invalid JSON.\n")
-	c.Assert(recorder.Code, gocheck.Equals, 400)
+	c.Assert(body, check.Equals, "Invalid JSON.\n")
+	c.Assert(recorder.Code, check.Equals, 400)
 }
 
-func (s *S) TestReadMessageWithInvalidMessageJSON(c *gocheck.C) {
+func (s *S) TestReadMessageWithInvalidMessageJSON(c *check.C) {
 	b := strings.NewReader(`{"TopicArn":"arn:test", "Message":""}`)
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
-	c.Assert(body, gocheck.Equals, "Invalid Message field JSON.\n")
-	c.Assert(recorder.Code, gocheck.Equals, 400)
+	c.Assert(body, check.Equals, "Invalid Message field JSON.\n")
+	c.Assert(recorder.Code, check.Equals, 400)
 }
 
-func (s *S) TestReadMessageFromInvalidTopicArn(c *gocheck.C) {
+func (s *S) TestReadMessageFromInvalidTopicArn(c *check.C) {
 	b := strings.NewReader(`{"TopicArn":"invalid","Message":"{}"}`)
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
-	c.Assert(body, gocheck.Equals, "No handler for the specified ARN (\"invalid\") found.\n")
-	c.Assert(recorder.Code, gocheck.Equals, 404)
+	c.Assert(body, check.Equals, "No handler for the specified ARN (\"invalid\") found.\n")
+	c.Assert(recorder.Code, check.Equals, 404)
 }
 
-func (s *S) TestReadMessageFromInvalidAutoScalingGroupName(c *gocheck.C) {
+func (s *S) TestReadMessageFromInvalidAutoScalingGroupName(c *check.C) {
 	b := strings.NewReader(`{"TopicArn":"arn:test","Message":"{\"AutoScalingGroupARN\":\"arn:asg-invalid\"}"}`)
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
-	c.Assert(body, gocheck.Equals, "Invalid Auto Scaling Group ARN \"arn:asg-invalid\".\n")
-	c.Assert(recorder.Code, gocheck.Equals, 400)
+	c.Assert(body, check.Equals, "Invalid Auto Scaling Group ARN \"arn:asg-invalid\".\n")
+	c.Assert(recorder.Code, check.Equals, 400)
 }
 
-func (s *S) TestGetInstance(c *gocheck.C) {
+func (s *S) TestGetInstance(c *check.C) {
 	i, err := getInstance(s.instance_ids[0])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(i.InstanceId, gocheck.Equals, s.instance_ids[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(i.InstanceId, check.Equals, s.instance_ids[0])
 }
 
-func (s *S) TestGetUpstreamFilenameForInstance(c *gocheck.C) {
+func (s *S) TestGetUpstreamFilenameForInstance(c *check.C) {
 	u := Config.Upstreams[0]
 	i := &ec2.Instance{InstanceId: "i-00000"}
 	path := getUpstreamFilenameForInstance(u, i)
-	c.Assert(path, gocheck.Equals, filepath.Join(u.ContainerFolder, "i-00000.upstream"))
+	c.Assert(path, check.Equals, filepath.Join(u.ContainerFolder, "i-00000.upstream"))
 }
 
-func (s *S) TestAutoSubscribe(c *gocheck.C) {
+func (s *S) TestAutoSubscribe(c *check.C) {
 	Config.AutoSubscribe = true
 
 	subscriptionUrlCalled := make(chan bool)
@@ -246,13 +246,13 @@ func (s *S) TestAutoSubscribe(c *gocheck.C) {
 
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
-	c.Assert(<-subscriptionUrlCalled, gocheck.Equals, true)
+	c.Assert(<-subscriptionUrlCalled, check.Equals, true)
 	body := readBody(recorder.Body, c)
-	c.Assert(body, gocheck.Equals, `Subscribed to "arn:test".`)
-	c.Assert(recorder.Code, gocheck.Equals, 202)
+	c.Assert(body, check.Equals, `Subscribed to "arn:test".`)
+	c.Assert(recorder.Code, check.Equals, 202)
 }
 
-func (s *S) TestAutoSubscribeOff(c *gocheck.C) {
+func (s *S) TestAutoSubscribeOff(c *check.C) {
 	Config.AutoSubscribe = false
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -265,6 +265,6 @@ func (s *S) TestAutoSubscribeOff(c *gocheck.C) {
 	recorder, request := newRequest("POST", "/", b, c)
 	readMessage(recorder, request)
 	body := readBody(recorder.Body, c)
-	c.Assert(body, gocheck.Equals, "")
-	c.Assert(recorder.Code, gocheck.Equals, 200)
+	c.Assert(body, check.Equals, "")
+	c.Assert(recorder.Code, check.Equals, 200)
 }

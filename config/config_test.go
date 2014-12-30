@@ -2,20 +2,20 @@ package config
 
 import (
 	"fmt"
+	"gopkg.in/check.v1"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"testing"
 )
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
 type S struct {
 	data string
 }
 
-var _ = gocheck.Suite(&S{
+var _ = check.Suite(&S{
 	data: `{
         "TopicArn": "arn:topicarn",
         "AutoSubscribe": true,
@@ -43,35 +43,35 @@ var _ = gocheck.Suite(&S{
     `,
 })
 
-func (s *S) TestParse(c *gocheck.C) {
+func (s *S) TestParse(c *check.C) {
 	cfg, err := Parse([]byte(s.data))
-	c.Check(err, gocheck.IsNil)
-	c.Check(cfg.TopicArn, gocheck.Equals, "arn:topicarn")
-	c.Check(cfg.AutoSubscribe, gocheck.Equals, true)
+	c.Check(err, check.IsNil)
+	c.Check(cfg.TopicArn, check.Equals, "arn:topicarn")
+	c.Check(cfg.AutoSubscribe, check.Equals, true)
 	for i, upstream := range cfg.Upstreams {
-		c.Check(upstream.AutoScalingGroupARN, gocheck.Equals, "arn:asgtest")
-		c.Check(upstream.File, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d.upstream", i))
-		c.Check(upstream.Name, gocheck.Equals, fmt.Sprintf("backend-%d", i))
-		c.Check(upstream.ContainerFolder, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d", i))
+		c.Check(upstream.AutoScalingGroupARN, check.Equals, "arn:asgtest")
+		c.Check(upstream.File, check.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d.upstream", i))
+		c.Check(upstream.Name, check.Equals, fmt.Sprintf("backend-%d", i))
+		c.Check(upstream.ContainerFolder, check.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d", i))
 	}
 }
 
-func (s *S) TestReadFile(c *gocheck.C) {
+func (s *S) TestReadFile(c *check.C) {
 	fp, err := ioutil.TempFile(c.MkDir(), "conf")
-	c.Check(err, gocheck.IsNil)
+	c.Check(err, check.IsNil)
 	defer fp.Close()
 
 	err = ioutil.WriteFile(fp.Name(), []byte(s.data), 0644)
-	c.Check(err, gocheck.IsNil)
+	c.Check(err, check.IsNil)
 
 	cfg, err := ReadFile(fp.Name())
-	c.Check(err, gocheck.IsNil)
-	c.Check(cfg.TopicArn, gocheck.Equals, "arn:topicarn")
-	c.Check(cfg.AutoSubscribe, gocheck.Equals, true)
+	c.Check(err, check.IsNil)
+	c.Check(cfg.TopicArn, check.Equals, "arn:topicarn")
+	c.Check(cfg.AutoSubscribe, check.Equals, true)
 	for i, upstream := range cfg.Upstreams {
-		c.Check(upstream.AutoScalingGroupARN, gocheck.Equals, "arn:asgtest")
-		c.Check(upstream.File, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d.upstream", i))
-		c.Check(upstream.Name, gocheck.Equals, fmt.Sprintf("backend-%d", i))
-		c.Check(upstream.ContainerFolder, gocheck.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d", i))
+		c.Check(upstream.AutoScalingGroupARN, check.Equals, "arn:asgtest")
+		c.Check(upstream.File, check.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d.upstream", i))
+		c.Check(upstream.Name, check.Equals, fmt.Sprintf("backend-%d", i))
+		c.Check(upstream.ContainerFolder, check.Equals, fmt.Sprintf("/etc/nginx/upstreams.d/backend-%d", i))
 	}
 }

@@ -43,7 +43,7 @@ To run the test suite you'll need a couple more dependencies:
 
 ```
 go get github.com/tsuru/commandmocker
-go get launchpad.net/gocheck
+go get gopkg.in/check.v1
 ```
 
 Run `go test ./...` and see everything passing. :smile:
