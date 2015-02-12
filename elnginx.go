@@ -46,10 +46,10 @@ func main() {
 	show_version := flag.Bool("version", false, "Print version and exit.")
 	flag.Parse()
 
-	Region = aws.Region{
-		Name:        AWSRegion,
-		EC2Endpoint: fmt.Sprintf("https://ec2.%s.amazonaws.com", AWSRegion),
-		SNSEndpoint: fmt.Sprintf("https://sns.%s.amazonaws.com", AWSRegion),
+	var ok bool
+	Region, ok = aws.Regions[AWSRegion]
+	if !ok {
+		log.Fatalf("Invalid AWS Region: %s", AWSRegion)
 	}
 
 	if *show_version {
